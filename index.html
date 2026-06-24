@@ -158,18 +158,6 @@
       <section class="step active" data-step="1">
       <div class="group">
         <div class="ctrl">
-          <select id="preset" class="sel">
-            <option value="munich">München</option>
-            <option value="berlin">Berlin</option>
-            <option value="zurich">Zürich</option>
-            <option value="vienna">Wien</option>
-            <option value="hamburg">Hamburg</option>
-            <option value="mallorca">Mallorca</option>
-            <option value="dubai">Dubai</option>
-            <option value="custom">Eigener Standort…</option>
-          </select>
-        </div>
-        <div class="ctrl">
           <span class="mini">PLZ-Suche</span>
           <div class="two" style="margin-top:5px">
             <div style="flex:1.6"><input class="num" id="plz" type="text" inputmode="numeric" autocomplete="off" placeholder="z. B. 80331"></div>
@@ -187,7 +175,7 @@
             <div class="seg" id="dst"><button data-dst="eu" class="on">EU</button><button data-dst="none">aus</button></div>
           </div>
         </div>
-        <p class="hint">Standort bestimmt den Sonnenstand. Presets setzen Koordinaten, UTC und Sommerzeit automatisch.</p>
+        <p class="hint">Standort bestimmt den Sonnenstand. PLZ-Suche (DE/AT/CH) setzt Koordinaten, UTC und Sommerzeit automatisch — oder Koordinaten manuell eingeben.</p>
       </div>
       </section>
 
@@ -488,9 +476,6 @@ function clipPolyToRect(poly,minx,maxx,miny,maxy){
 }
 
 /* ============================================================================ STATE */
-const PRESETS={ munich:['München',48.137,11.575,1,'eu'], berlin:['Berlin',52.52,13.405,1,'eu'],
-  zurich:['Zürich',47.377,8.541,1,'eu'], vienna:['Wien',48.208,16.373,1,'eu'], hamburg:['Hamburg',53.551,9.993,1,'eu'],
-  mallorca:['Mallorca',39.57,2.65,1,'eu'], dubai:['Dubai',25.20,55.27,4,'none'] };
 const S = { name:'München', lat:48.137, lon:11.575, utc:1, dst:'eu',
   time:780, doy:174, orient:225, terrL:8, terrD:4,
   wall:'white', surface:'tiles',
@@ -882,15 +867,9 @@ document.getElementById('clock').textContent=document.getElementById('time-v').t
 // location
 const $=id=>document.getElementById(id);
 function applyLocation(){updateSub();updateSun();buildSweep();}
-$('preset').addEventListener('change',e=>{const p=PRESETS[e.target.value];
-  if(p){S.name=p[0];S.lat=p[1];S.lon=p[2];S.utc=p[3];S.dst=p[4];
-    $('lat').value=p[1].toFixed(2);$('lon').value=p[2].toFixed(2);$('utc').value=p[3];
-    document.querySelectorAll('#dst button').forEach(b=>b.classList.toggle('on',b.dataset.dst===p[4]));
-  } else S.name='Eigener Standort';
-  applyLocation();});
 ['lat','lon','utc'].forEach(id=>$(id).addEventListener('input',()=>{
   S.lat=parseFloat($('lat').value)||0;S.lon=parseFloat($('lon').value)||0;S.utc=parseFloat($('utc').value)||0;
-  $('preset').value='custom';S.name='Eigener Standort';applyLocation();}));
+  S.name='Eigener Standort';applyLocation();}));
 document.querySelectorAll('#dst button').forEach(b=>b.addEventListener('click',()=>{
   document.querySelectorAll('#dst button').forEach(x=>x.classList.remove('on'));b.classList.add('on');S.dst=b.dataset.dst;applyLocation();}));
 
@@ -907,7 +886,7 @@ async function resolvePLZ(){ const raw=$('plz').value.trim();
   if(!hit){plzHit.textContent='Keine PLZ gefunden';plzHit.className='plzhit miss';return;}
   const [lat,lon,name]=hit;
   S.lat=lat; S.lon=lon; S.name=`${raw} ${name}`; S.utc=1; S.dst='eu';
-  $('lat').value=lat.toFixed(4); $('lon').value=lon.toFixed(4); $('utc').value=1; $('preset').value='custom';
+  $('lat').value=lat.toFixed(4); $('lon').value=lon.toFixed(4); $('utc').value=1;
   document.querySelectorAll('#dst button').forEach(b=>b.classList.toggle('on',b.dataset.dst==='eu'));
   plzHit.textContent=`✓ ${name} · ${lat.toFixed(3)}, ${lon.toFixed(3)}`; plzHit.className='plzhit ok';
   applyLocation(); }
@@ -1024,7 +1003,6 @@ function syncUI(){
   setTiltRange();
   BINDS.forEach(b=>{b.inp.value=S[b.key]; if(b.out)b.out.textContent=b.render(S[b.key]);});
   $('lat').value=S.lat; $('lon').value=S.lon; $('utc').value=S.utc;
-  let pk='custom'; for(const k in PRESETS){if(PRESETS[k][0]===S.name){pk=k;break;}} $('preset').value=pk;
   $('wall').value=S.wall; $('surface').value=S.surface;
   document.querySelectorAll('#dst button').forEach(b=>b.classList.toggle('on',b.dataset.dst===S.dst));
   document.querySelectorAll('#shape button').forEach(b=>b.classList.toggle('on',b.dataset.shape===S.shape));
