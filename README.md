@@ -20,13 +20,17 @@ Any static file server works. There is no build step and **no external network r
 
 ## Features
 
-- **Solar model** (NOAA) with settable location — presets, **DACH postal-code search** (offline, no API), or manual lat/lon/UTC/EU-DST — plus time and date scrubbers.
+- **Solar model** (NOAA) with settable location — **DACH postal-code search** (offline, no API) or manual lat/lon/UTC/EU-DST — plus time and date scrubbers.
 - **5-step wizard**: Standort → Terrasse → Wände → Ausstattung → Sonne & Schutz.
 - **Configurable scene**: terrace size + surface, house wall material, per-side privacy walls (each individually placeable), repositionable table group, furniture and extras.
 - **Sun protection**: parasol, shade sail, cantilever umbrella (round/rectangular, swing/tilt), cassette awning — with an all-day shadow trail and a live "% terrace shaded" readout.
 - **Two views**: orbit overview and a first-person walk mode (desktop only; pointer-lock).
 - **Save/share**: config autosaves to `localStorage`; "Link kopieren" encodes the full scene into a shareable URL.
 - Quality toggle (post-processing pipeline scales down for weaker GPUs); graceful fallback when WebGL2 is unavailable.
+
+Type a German, Austrian or Swiss postal code and the location resolves to the PLZ centroid offline (no geocoding API) — coordinates, UTC offset and EU daylight-saving are set automatically:
+
+<img src="docs/plz-search.png" alt="PLZ search resolving 20095 to Hamburg" width="360">
 
 ## Architecture
 
