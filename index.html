@@ -53,6 +53,13 @@
   .two .mini{font-size:10.5px;color:var(--dimmer);font-weight:600;text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px;display:block}
   .plzhit{font-size:11.5px;line-height:1.4;margin-top:7px;min-height:14px;color:var(--dimmer);font-family:'DM Mono',monospace}
   .plzhit.ok{color:#6fd0aa} .plzhit.miss{color:#e0964e}
+  details.adv{margin:2px 0 4px}
+  details.adv > summary{list-style:none;cursor:pointer;font-size:11.5px;color:var(--dim);font-weight:600;
+    padding:5px 0;display:flex;align-items:center;gap:7px;user-select:none}
+  details.adv > summary::-webkit-details-marker{display:none}
+  details.adv > summary::before{content:"▸";font-size:9px;color:var(--dimmer);transition:transform .2s}
+  details.adv[open] > summary::before{transform:rotate(90deg)}
+  details.adv > summary:hover{color:var(--text)}
   .seg{display:flex;gap:0;background:var(--line);border-radius:8px;padding:3px;margin-top:2px;flex-wrap:wrap}
   .seg button{flex:1;border:0;background:transparent;color:var(--dim);font-family:inherit;font-size:11px;font-weight:600;
     padding:8px 2px;border-radius:6px;cursor:pointer;transition:.18s;white-space:nowrap;min-width:30%}
@@ -165,16 +172,19 @@
           </div>
           <div class="plzhit" id="plzhit"></div>
         </div>
-        <div class="ctrl two">
-          <div><span class="mini">Breite °N</span><input class="num" id="lat" type="number" step="0.01" value="48.14"></div>
-          <div><span class="mini">Länge °O</span><input class="num" id="lon" type="number" step="0.01" value="11.58"></div>
-        </div>
-        <div class="ctrl two">
-          <div><span class="mini">UTC-Offset</span><input class="num" id="utc" type="number" step="0.5" value="1"></div>
-          <div><span class="mini">Sommerzeit</span>
-            <div class="seg" id="dst"><button data-dst="eu" class="on">EU</button><button data-dst="none">aus</button></div>
+        <details class="adv">
+          <summary>Koordinaten manuell</summary>
+          <div class="ctrl two" style="margin-top:9px">
+            <div><span class="mini">Breite °N</span><input class="num" id="lat" type="number" step="0.01" value="48.14"></div>
+            <div><span class="mini">Länge °O</span><input class="num" id="lon" type="number" step="0.01" value="11.58"></div>
           </div>
-        </div>
+          <div class="ctrl two">
+            <div><span class="mini">UTC-Offset</span><input class="num" id="utc" type="number" step="0.5" value="1"></div>
+            <div><span class="mini">Sommerzeit</span>
+              <div class="seg" id="dst"><button data-dst="eu" class="on">EU</button><button data-dst="none">aus</button></div>
+            </div>
+          </div>
+        </details>
         <p class="hint">Standort bestimmt den Sonnenstand. PLZ-Suche (DE/AT/CH) setzt Koordinaten, UTC und Sommerzeit automatisch — oder Koordinaten manuell eingeben.</p>
       </div>
       </section>
@@ -1003,6 +1013,7 @@ function syncUI(){
   setTiltRange();
   BINDS.forEach(b=>{b.inp.value=S[b.key]; if(b.out)b.out.textContent=b.render(S[b.key]);});
   $('lat').value=S.lat; $('lon').value=S.lon; $('utc').value=S.utc;
+  const adv=document.querySelector('details.adv'); if(adv)adv.open=(S.name==='Eigener Standort'); // show manual coords if that's what was loaded
   $('wall').value=S.wall; $('surface').value=S.surface;
   document.querySelectorAll('#dst button').forEach(b=>b.classList.toggle('on',b.dataset.dst===S.dst));
   document.querySelectorAll('#shape button').forEach(b=>b.classList.toggle('on',b.dataset.shape===S.shape));
