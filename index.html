@@ -51,6 +51,8 @@
   .two{display:flex;gap:9px}
   .two > div{flex:1}
   .two .mini{font-size:10.5px;color:var(--dimmer);font-weight:600;text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px;display:block}
+  .plzhit{font-size:11.5px;line-height:1.4;margin-top:7px;min-height:14px;color:var(--dimmer);font-family:'DM Mono',monospace}
+  .plzhit.ok{color:#6fd0aa} .plzhit.miss{color:#e0964e}
   .seg{display:flex;gap:0;background:var(--line);border-radius:8px;padding:3px;margin-top:2px;flex-wrap:wrap}
   .seg button{flex:1;border:0;background:transparent;color:var(--dim);font-family:inherit;font-size:11px;font-weight:600;
     padding:8px 2px;border-radius:6px;cursor:pointer;transition:.18s;white-space:nowrap;min-width:30%}
@@ -166,6 +168,14 @@
             <option value="dubai">Dubai</option>
             <option value="custom">Eigener Standort…</option>
           </select>
+        </div>
+        <div class="ctrl">
+          <span class="mini">PLZ-Suche</span>
+          <div class="two" style="margin-top:5px">
+            <div style="flex:1.6"><input class="num" id="plz" type="text" inputmode="numeric" autocomplete="off" placeholder="z. B. 80331"></div>
+            <div style="flex:1"><div class="seg" id="plzcc"><button data-cc="de" class="on">DE</button><button data-cc="at">AT</button><button data-cc="ch">CH</button></div></div>
+          </div>
+          <div class="plzhit" id="plzhit"></div>
         </div>
         <div class="ctrl two">
           <div><span class="mini">Breite °N</span><input class="num" id="lat" type="number" step="0.01" value="48.14"></div>
@@ -883,6 +893,28 @@ $('preset').addEventListener('change',e=>{const p=PRESETS[e.target.value];
   $('preset').value='custom';S.name='Eigener Standort';applyLocation();}));
 document.querySelectorAll('#dst button').forEach(b=>b.addEventListener('click',()=>{
   document.querySelectorAll('#dst button').forEach(x=>x.classList.remove('on'));b.classList.add('on');S.dst=b.dataset.dst;applyLocation();}));
+
+// PLZ → coordinates (DACH; lazy-loaded GeoNames centroids, all CET so UTC+1/EU-DST)
+let PLZDB=null, plzLoading=null, plzCC='de';
+const plzHit=$('plzhit');
+function loadPLZ(){ if(PLZDB)return Promise.resolve(PLZDB);
+  if(!plzLoading)plzLoading=fetch('assets/data/plz-dach.json').then(r=>r.json()).then(d=>PLZDB=d).catch(()=>null);
+  return plzLoading; }
+async function resolvePLZ(){ const raw=$('plz').value.trim();
+  if(!raw){plzHit.textContent='';plzHit.className='plzhit';return;}
+  const db=await loadPLZ(); if(!db){plzHit.textContent='PLZ-Daten nicht verfügbar';plzHit.className='plzhit miss';return;}
+  const hit=db[plzCC] && db[plzCC][raw];
+  if(!hit){plzHit.textContent='Keine PLZ gefunden';plzHit.className='plzhit miss';return;}
+  const [lat,lon,name]=hit;
+  S.lat=lat; S.lon=lon; S.name=`${raw} ${name}`; S.utc=1; S.dst='eu';
+  $('lat').value=lat.toFixed(4); $('lon').value=lon.toFixed(4); $('utc').value=1; $('preset').value='custom';
+  document.querySelectorAll('#dst button').forEach(b=>b.classList.toggle('on',b.dataset.dst==='eu'));
+  plzHit.textContent=`✓ ${name} · ${lat.toFixed(3)}, ${lon.toFixed(3)}`; plzHit.className='plzhit ok';
+  applyLocation(); }
+$('plz').addEventListener('input',()=>{clearTimeout($('plz')._t);$('plz')._t=setTimeout(resolvePLZ,250);});
+document.querySelectorAll('#plzcc button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('#plzcc button').forEach(x=>x.classList.remove('on'));b.classList.add('on');plzCC=b.dataset.cc;
+  $('plz').placeholder=plzCC==='de'?'z. B. 80331':'z. B. 1010'; if($('plz').value.trim())resolvePLZ();}));
 
 // material library
 ['wall','surface'].forEach(id=>$(id).addEventListener('change',e=>{S[id]=e.target.value;buildWorld();}));

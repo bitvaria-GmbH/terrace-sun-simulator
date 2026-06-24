@@ -20,7 +20,7 @@ Any static file server works. There is no build step and **no external network r
 
 ## Features
 
-- **Solar model** (NOAA) with settable location (presets + lat/lon/UTC/EU-DST), time and date scrubbers.
+- **Solar model** (NOAA) with settable location — presets, **DACH postal-code search** (offline, no API), or manual lat/lon/UTC/EU-DST — plus time and date scrubbers.
 - **5-step wizard**: Standort → Terrasse → Wände → Ausstattung → Sonne & Schutz.
 - **Configurable scene**: terrace size + surface, house wall material, per-side privacy walls (each individually placeable), repositionable table group, furniture and extras.
 - **Sun protection**: parasol, shade sail, cantilever umbrella (round/rectangular, swing/tilt), cassette awning — with an all-day shadow trail and a live "% terrace shaded" readout.
