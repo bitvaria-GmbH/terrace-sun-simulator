@@ -2,7 +2,9 @@
 
 An interactive, physically-accurate sun-and-shade simulator for a terrace, built with Three.js. Set a location, size the terrace, configure walls and furniture, place sun protection (parasol, sail, cantilever umbrella, awning), then scrub through the day to see exactly where the shadow falls and what fraction of the terrace is shaded.
 
-Open source under the MIT License.
+**[▶ Live demo](https://terrace-simulator.bitvaria.com/)** · Open source under the MIT License.
+
+![Terrassen-Simulator 3D — configurator and 3D scene](docs/screenshot.png)
 
 ## Run
 
