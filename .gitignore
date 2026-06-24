@@ -1,3 +1,7 @@
 .DS_Store
 node_modules/
 *.log
+
+# Local scratch / screenshot files (e.g. _advtest.html, _shot.html).
+# Safe: the committed _headers file has no .html extension.
+_*.html
