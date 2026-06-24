@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
 <title>Terrassen-Simulator 3D</title>
 <link rel="stylesheet" href="assets/fonts/fonts.css">
 <style>
@@ -143,9 +143,92 @@
   #pct-row{display:flex;align-items:center;gap:9px;margin-top:11px;padding-top:11px;border-top:1px solid var(--line)}
   #pct-row .k{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--dimmer);font-weight:700;flex:1}
   #pct-row .v{font-family:'DM Mono',monospace;font-size:16px;color:var(--shade);font-weight:500}
-  @media (max-width:820px){
-    #panel{width:100%;height:auto;max-height:50%;bottom:0;top:auto;border-right:0;border-top:1px solid var(--line);border-radius:18px 18px 0 0}
-    #panel.hidden{transform:translateY(100%)} #readout{width:150px}#dial{width:120px;height:120px}
+  /* ---- collapsible readout + bottom-sheet scaffolding (mobile) ---- */
+  .ro-toggle{position:absolute;top:9px;right:9px;width:30px;height:30px;border:0;border-radius:8px;
+    background:rgba(255,255,255,.05);color:var(--dim);font-size:13px;line-height:1;cursor:pointer;
+    display:none;align-items:center;justify-content:center;transition:.15s;padding:0;z-index:1}
+  .ro-toggle:hover{background:rgba(255,255,255,.12);color:var(--text)}
+  #readout.collapsed{padding:12px 14px 13px}
+  #readout.collapsed #dial,#readout.collapsed .stats,#readout.collapsed #datelbl{display:none}
+  #readout.collapsed #clock{font-size:23px;margin-right:34px}
+  #readout.collapsed #status{margin-top:9px}
+  #readout.collapsed #pct-row{margin-top:9px;padding-top:9px}
+  .sheet-handle{display:none;height:26px;flex:none;cursor:grab}
+  .sheet-handle::after{content:"";display:block;width:44px;height:5px;border-radius:5px;
+    background:var(--line-strong);margin:10px auto 0;transition:background .15s,width .15s}
+  .sheet-handle:active{cursor:grabbing}
+  .sheet-handle:active::after{background:var(--dim);width:54px}
+  .only-mobile{display:none}
+  #scrim{position:fixed;inset:0;z-index:9;background:rgba(5,8,11,.55);opacity:0;pointer-events:none;
+    transition:opacity .35s;display:none;-webkit-tap-highlight-color:transparent}
+
+  /* ---- first-visit onboarding ---- */
+  #onboard{position:fixed;inset:0;z-index:30;display:none;align-items:flex-end;justify-content:center;padding:22px;
+    background:radial-gradient(130% 90% at 50% 30%, rgba(8,12,16,.55), rgba(5,8,11,.84));
+    backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
+  #onboard.show{display:flex}
+  .ob-card{position:relative;max-width:380px;width:100%;text-align:center;overflow:hidden;
+    background:linear-gradient(180deg,rgba(23,32,39,.94),rgba(13,19,24,.96));
+    border:1px solid var(--line-strong);border-radius:24px;padding:30px 26px 22px;
+    box-shadow:0 34px 90px rgba(0,0,0,.62);
+    animation:obrise .5s cubic-bezier(.22,1,.36,1) both}
+  @keyframes obrise{from{opacity:0;transform:translateY(26px)}to{opacity:1;transform:translateY(0)}}
+  .ob-card::before{content:"";position:absolute;left:0;right:0;top:0;height:120px;pointer-events:none;
+    background:radial-gradient(70% 100% at 50% 0%,rgba(255,180,84,.16),transparent 72%)}
+  .ob-sun{display:block;width:132px;height:60px;margin:4px auto 16px;position:relative}
+  .ob-sun .horizon{stroke:var(--line-strong);stroke-width:2;stroke-linecap:round}
+  .ob-sun .arc{fill:none;stroke:rgba(255,180,84,.4);stroke-width:1.5;stroke-dasharray:2 6;stroke-linecap:round}
+  .ob-sun .disc{fill:var(--sun);filter:drop-shadow(0 0 7px rgba(255,180,84,.75));
+    animation:obsun 1.7s cubic-bezier(.22,1,.36,1) both}
+  @keyframes obsun{0%{transform:translateY(16px);opacity:0}55%{opacity:1}100%{transform:translateY(0);opacity:1}}
+  .ob-eyebrow{font-size:10.5px;letter-spacing:.32em;text-transform:uppercase;color:var(--sun);font-weight:700;margin:0 0 10px}
+  .ob-card h2{font-size:21px;line-height:1.22;font-weight:800;margin:0 0 10px;letter-spacing:-.01em}
+  .ob-sub{font-size:13.5px;line-height:1.6;color:var(--dim);margin:0 0 22px}
+  .ob-cta{width:100%;border:0;background:var(--sun);color:#1a1206;font-family:inherit;font-weight:700;font-size:15px;
+    padding:15px;border-radius:13px;cursor:pointer;transition:.15s;box-shadow:0 10px 28px rgba(255,180,84,.3)}
+  .ob-cta:hover{background:#ffc473;transform:translateY(-1px)}
+  .ob-skip{margin-top:11px;border:0;background:transparent;color:var(--dimmer);font-family:inherit;font-weight:600;
+    font-size:13px;cursor:pointer;padding:7px}
+  .ob-skip:hover{color:var(--text)}
+
+  @media (max-width:900px){
+    #brand{display:none}
+    #scrim{display:block}
+    body.panel-open #scrim{opacity:1;pointer-events:auto}
+
+    #panel{width:100%;height:auto;max-height:86vh;bottom:0;top:auto;border-right:0;
+      border-top:1px solid var(--line-strong);border-radius:20px 20px 0 0;
+      box-shadow:0 -22px 60px rgba(0,0,0,.55)}
+    #panel.hidden{transform:translateY(101%)}
+    #panel header{padding-top:8px}
+    .sheet-handle{display:block}
+    .wiz-nav{padding-bottom:calc(11px + env(safe-area-inset-bottom))}
+
+    #readout{width:auto;min-width:148px;max-width:64vw;top:max(12px,env(safe-area-inset-top));right:12px}
+    #dial{width:116px;height:116px}
+    .ro-toggle{display:flex}
+    body.panel-open #readout{opacity:0;pointer-events:none;transition:opacity .25s}
+
+    /* fatter touch targets */
+    input[type=range]{height:6px}
+    input[type=range]::-webkit-slider-thumb{width:24px;height:24px}
+    .seg button{padding:11px 4px;font-size:12px}
+    .check input{width:40px;height:23px}.check input::after{width:19px;height:19px}
+    .check input:checked::after{transform:translateX(17px)}
+    .navbtn{padding:12px 18px;font-size:14px}
+    .dot{width:30px;height:30px;font-size:13px}
+
+    #toolbar{bottom:max(14px,env(safe-area-inset-bottom));padding:7px;transition:.3s cubic-bezier(.4,0,.2,1)}
+    .tbtn{padding:12px 16px;font-size:14px}
+    #panelBtn{background:var(--sun);color:#1a1206}
+    #panelBtn small{display:none}
+    .only-mobile{display:inline}
+    body.panel-open #toolbar{opacity:0;pointer-events:none;transform:translate(-50%,40px)}
+    #toolbar{max-width:calc(100vw - 24px);gap:9px}
+    #walkBtn{display:none}                       /* walk needs WASD — pointless on touch/narrow */
+    #panelBtn{font-weight:700}
+    #orbitBtn.on{outline:none}                   /* no orange-outline vs orange-fill clash on mobile */
+    .sheet-handle,#panel>header{touch-action:none}
   }
 </style>
 </head>
@@ -154,6 +237,7 @@
   <div id="brand">Terrassen-Simulator<small>Sonnenstand &amp; Schatten in 3D</small></div>
 
   <aside id="panel">
+    <div class="sheet-handle" id="sheetHandle"></div>
     <header>
       <p class="kicker">Sonnenstands-Simulator</p>
       <h1>Terrassen-Simulator 3D<small id="sub">München · 48,14° N, 11,58° O</small></h1>
@@ -363,6 +447,7 @@
   </aside>
 
   <div id="readout">
+    <button id="roToggle" class="ro-toggle" aria-label="Einklappen">▾</button>
     <div id="clock">13:00</div>
     <div id="datelbl">23. Juni 2026</div>
     <svg id="dial" viewBox="0 0 200 200"></svg>
@@ -377,7 +462,23 @@
   <div id="toolbar">
     <button class="tbtn primary" id="walkBtn">▶ Begehen <small>WASD</small></button>
     <button class="tbtn on" id="orbitBtn">⟲ Übersicht</button>
-    <button class="tbtn" id="panelBtn">☰ <small>Tab</small></button>
+    <button class="tbtn" id="panelBtn">☰<span class="only-mobile"> Einstellungen</span><small>Tab</small></button>
+  </div>
+  <div id="scrim"></div>
+
+  <div id="onboard">
+    <div class="ob-card">
+      <svg class="ob-sun" viewBox="0 0 132 60" aria-hidden="true">
+        <path class="arc" d="M16 52 A50 50 0 0 1 116 52"/>
+        <line class="horizon" x1="8" y1="52" x2="124" y2="52"/>
+        <circle class="disc" cx="66" cy="36" r="11"/>
+      </svg>
+      <p class="ob-eyebrow">Sonnenstands-Simulator</p>
+      <h2>Wann liegt deine Terrasse in der Sonne?</h2>
+      <p class="ob-sub">Standort, Maße und Sonnenschutz einstellen — die Verschattung wird live in 3D über den Tag berechnet.</p>
+      <button class="ob-cta" id="obStart">Terrasse einrichten</button>
+      <button class="ob-skip" id="obSkip">Erst mal umsehen</button>
+    </div>
   </div>
 
   <div id="crosshair"></div>
@@ -981,7 +1082,7 @@ function showStep(n){curStep=clamp(n,1,NSTEPS);
   $('prevBtn').disabled=curStep===1; $('nextBtn').textContent=curStep===NSTEPS?'Fertig':'Weiter';
   document.querySelector('.body').scrollTop=0;}
 $('prevBtn').addEventListener('click',()=>showStep(curStep-1));
-$('nextBtn').addEventListener('click',()=>{ if(curStep<NSTEPS)showStep(curStep+1); else $('panel').classList.toggle('hidden'); });
+$('nextBtn').addEventListener('click',()=>{ if(curStep<NSTEPS)showStep(curStep+1); else closePanel(); });
 
 // ---- save / load config (Phase 3): localStorage + shareable URL hash ----
 const SAVE_KEYS=['name','lat','lon','utc','dst','time','doy','orient','terrL','terrD','wall','surface',
@@ -1026,12 +1127,57 @@ function syncUI(){
   buildWallControls();
 }
 
+// ---- panel as mobile bottom sheet + collapsible readout ----
+const mqMobile=matchMedia('(max-width:900px)');
+function collapseReadout(c){const r=$('readout');r.classList.toggle('collapsed',c);
+  $('roToggle').textContent=c?'▴':'▾'; $('roToggle').setAttribute('aria-label',c?'Ausklappen':'Einklappen');}
+function dismissOnboard(){$('onboard').classList.remove('show');try{localStorage.setItem('terrace-seen','1');}catch(e){}}
+$('obStart').addEventListener('click',()=>{dismissOnboard();openPanel();});
+$('obSkip').addEventListener('click',dismissOnboard);
+function openPanel(){$('panel').classList.remove('hidden'); if(mqMobile.matches)document.body.classList.add('panel-open');}
+function closePanel(){$('panel').classList.add('hidden'); document.body.classList.remove('panel-open');}
+function togglePanel(){$('panel').classList.contains('hidden')?openPanel():closePanel();}
+$('scrim').addEventListener('click',closePanel);
+// drag-to-dismiss the bottom sheet (handle = grab + tap-to-close; header = grab)
+(function(){
+  const panel=$('panel'), scrim=$('scrim');
+  let y0=0, dy=0, active=false, fromHandle=false;
+  function down(e,isHandle){
+    if(!mqMobile.matches || panel.classList.contains('hidden')) return;
+    active=true; fromHandle=isHandle; y0=e.clientY; dy=0;
+    panel.style.transition='none';
+  }
+  function move(e){
+    if(!active) return;
+    dy=e.clientY-y0; const d=Math.max(dy,0);
+    panel.style.transform=`translateY(${d}px)`;
+    scrim.style.opacity=String(clamp(1-d/420,0,1));
+  }
+  function end(){
+    if(!active) return; active=false;
+    panel.style.transition='';                       // restore stylesheet .35s
+    const tap = Math.abs(dy)<6;
+    if(dy>90 || (fromHandle && tap)){                // dragged far OR tapped the handle
+      closePanel(); panel.style.transform=''; scrim.style.opacity='';
+    } else {                                          // snap back open
+      panel.style.transform=''; scrim.style.opacity='';
+    }
+  }
+  $('sheetHandle').addEventListener('pointerdown',e=>down(e,true));
+  panel.querySelector('header').addEventListener('pointerdown',e=>down(e,false));
+  addEventListener('pointermove',move);
+  addEventListener('pointerup',end); addEventListener('pointercancel',end);
+})();
+$('roToggle').addEventListener('click',()=>{const r=$('readout'),c=r.classList.toggle('collapsed');
+  $('roToggle').textContent=c?'▴':'▾'; $('roToggle').setAttribute('aria-label',c?'Ausklappen':'Einklappen');});
+mqMobile.addEventListener('change',e=>{ if(!e.matches)document.body.classList.remove('panel-open'); });
+
 /* ============================================================================ FPS / MODE */
 let mode='orbit'; const keys={w:0,a:0,s:0,d:0,shift:0};
 const resetKeys=()=>{keys.w=keys.a=keys.s=keys.d=keys.shift=0;};   // prevent stuck-key autowalk
 addEventListener('blur',resetKeys);
 addEventListener('keydown',e=>{if(e.code==='KeyW')keys.w=1;if(e.code==='KeyS')keys.s=1;if(e.code==='KeyA')keys.a=1;if(e.code==='KeyD')keys.d=1;
-  if(e.code==='ShiftLeft')keys.shift=1;if(e.code==='Tab'){e.preventDefault();$('panel').classList.toggle('hidden');}});
+  if(e.code==='ShiftLeft')keys.shift=1;if(e.code==='Tab'){e.preventDefault();togglePanel();}});
 addEventListener('keyup',e=>{if(e.code==='KeyW')keys.w=0;if(e.code==='KeyS')keys.s=0;if(e.code==='KeyA')keys.a=0;if(e.code==='KeyD')keys.d=0;if(e.code==='ShiftLeft')keys.shift=0;});
 const EYE=1.68;   // eye height of a ~1.80 m person
 function enterFps(){mode='fps';orbit.enabled=false;
@@ -1046,7 +1192,7 @@ $('walkBtn').addEventListener('click',enterFps);$('orbitBtn').addEventListener('
 // touch devices have no PointerLock → hide walk mode, leave orbit only
 if(matchMedia('(pointer:coarse)').matches||'ontouchstart'in window){$('walkBtn').style.display='none';}
 $('resumeBtn').addEventListener('click',()=>fps.lock());$('toOrbitBtn').addEventListener('click',enterOrbit);
-$('panelBtn').addEventListener('click',()=>$('panel').classList.toggle('hidden'));
+$('panelBtn').addEventListener('click',togglePanel);
 function clampPlayer(){const p=camera.position;p.y=EYE;const l=env.worldToLocal(p.clone());
   const hw=HOUSE_W/2, zf=-S.terrD/2, L=S.terrL/2, Dp=S.terrD/2, W=S.walls;
   if(l.z<zf+0.4&&l.x>-hw-0.4&&l.x<hw+0.4&&l.z>zf-7)l.z=zf+0.4;
@@ -1063,9 +1209,15 @@ function resize(){const w=innerWidth,h=innerHeight;renderer.setSize(w,h,false);c
 addEventListener('resize',resize);
 
 chairTemplate=makeChair();
-loadState();
+const restored=loadState();
 buildWorld(); updateOrient(); applyQuality(); buildShade(); updateSun(); buildSweep(); updateSub(); resize();
 syncUI(); showStep(1);
+// mobile/narrow first-visit: calm, everything collapsed, one clear way in
+if(mqMobile.matches){
+  closePanel(); collapseReadout(true);
+  let seen=false; try{seen=localStorage.getItem('terrace-seen')==='1';}catch(e){}
+  if(!restored && !seen) $('onboard').classList.add('show');
+}
 
 const clock=new THREE.Clock();
 renderer.setAnimationLoop(()=>{const dt=Math.min(clock.getDelta(),0.05);
