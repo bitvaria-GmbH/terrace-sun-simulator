@@ -556,7 +556,7 @@ function sunVector(az,el){ const a=az*D2R,e=el*D2R,c=Math.cos(e);
   return new THREE.Vector3(c*Math.sin(a),Math.sin(e),-c*Math.cos(a)); }
 
 function sombranoGeom(S){
-  const isRect=S.sombShape==='rect', R=S.diam/2, halfRadial=isRect?S.sl/2:R, armReach=halfRadial+0.25;
+  const isRect=S.sombShape==='rect', R=S.diam/2, halfRadial=isRect?S.sl/2:R, armReach=halfRadial;  // canopy edge meets the mast (no gap)
   const f=S.swing*D2R, radial=new THREE.Vector3(Math.sin(f),0,Math.cos(f));
   return { isRect,R,W:S.sw,L:S.sl,f,armReach,radial,tilt:S.tilt*D2R,
     mastTop:new THREE.Vector3(S.px,2.55,S.pz),
