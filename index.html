@@ -414,8 +414,8 @@
           <input type="range" id="px" min="-6" max="6" step="0.1" value="0">
         </div>
         <div class="ctrl" data-when="round rect sombrano">
-          <div class="row"><label for="pz">Position quer</label><span class="val" id="pz-v">0,0 m</span></div>
-          <input type="range" id="pz" min="-5" max="5" step="0.1" value="0">
+          <div class="row"><label for="pz">Abstand zur Wand</label><span class="val" id="pz-v">2,0 m</span></div>
+          <input type="range" id="pz" min="0" max="8" step="0.1" value="2">
         </div>
         <div class="ctrl" id="ctrl-tilt">
           <div class="row"><label for="tilt" id="tilt-l">Neigung (links/rechts)</label><span class="val" id="tilt-v">0°</span></div>
@@ -564,12 +564,12 @@ function canopyOutline(S){
   if(S.shape==='sombrano'){ const G=sombranoGeom(S),pts=[];
     const q=new THREE.Quaternion().setFromAxisAngle(G.radial,G.tilt).multiply(new THREE.Quaternion().setFromAxisAngle(YAXIS,G.f));
     if(G.isRect){const w=G.W/2,l=G.L/2;[[-w,-l],[w,-l],[w,l],[-w,l]].forEach(([x,z])=>pts.push(new THREE.Vector3(x,0,z).applyQuaternion(q).add(G.center)));}
-    else{for(let i=0;i<48;i++){const a=i/48*2*Math.PI;pts.push(new THREE.Vector3(G.R*Math.cos(a),0,G.R*Math.sin(a)).applyQuaternion(q).add(G.center));}}
+    else{for(let i=0;i<8;i++){const a=Math.PI/8+i/8*2*Math.PI;pts.push(new THREE.Vector3(G.R*Math.cos(a),0,G.R*Math.sin(a)).applyQuaternion(q).add(G.center));}}
     return pts; }
   if(S.shape==='warema'){const P=wareamaPlane(S),w=P.w/2;
     return [new THREE.Vector3(P.px-w,P.y0,P.z0),new THREE.Vector3(P.px+w,P.y0,P.z0),new THREE.Vector3(P.px+w,P.y1,P.z1),new THREE.Vector3(P.px-w,P.y1,P.z1)];}
   const pts=[],h=S.hgt,px=S.px,pz=S.pz,c=Math.cos(S.tilt*D2R),s=Math.sin(S.tilt*D2R),rot=(x,z)=>new THREE.Vector3(px+x*c,h+x*s,pz+z);
-  if(S.shape==='round'){const r=S.diam/2;for(let i=0;i<48;i++){const a=i/48*2*Math.PI;pts.push(rot(r*Math.cos(a),r*Math.sin(a)));}}
+  if(S.shape==='round'){const r=S.diam/2;for(let i=0;i<8;i++){const a=Math.PI/8+i/8*2*Math.PI;pts.push(rot(r*Math.cos(a),r*Math.sin(a)));}}
   else if(S.shape==='rect'){const w=S.rw/2,l=S.rl/2;pts.push(rot(-w,-l),rot(w,-l),rot(w,l),rot(-w,l));}
   return pts;
 }
@@ -595,7 +595,7 @@ const S = { name:'München', lat:48.137, lon:11.575, utc:1, dst:'eu',
   walls:{ left:{on:false,mat:'wood',h:2.0,len:4,off:0},
           right:{on:false,mat:'wood',h:2.0,len:4,off:0},
           front:{on:false,mat:'wood',h:1.9,len:6,off:0} },
-  shape:'round', diam:3.5, rw:4, rl:3, hgt:2.4, px:0, pz:0, tilt:0,
+  shape:'round', diam:3.5, rw:4, rl:3, hgt:2.4, px:0, pz:0, poleWall:2, tilt:0,
   swing:0, sombShape:'round', sw:3.5, sl:2.5, wb:5, wa:3.5, sweep:false, quality:'high' };
 const WALL_KINDS=[{key:'left',label:'Wand links',axis:'z'},{key:'right',label:'Wand rechts',axis:'z'},
   {key:'front',label:'Wand vorne (offene Seite)',axis:'x'}];
@@ -781,7 +781,6 @@ function buildWorld(){
   // terrace surface (library)
   const surf=SURF[S.surface]; surfRepeat(surf,L,Dp);
   world.add(box(L,0.16,Dp,surf,0,0.08,0,false,true));
-  world.add(box(L+0.2,0.16,0.2,M.wood,0,0.04,Dp/2+0.1,false,true));
   // house wall (library)
   const hw=HOUSE_W, hd=6.25, hh=6, hcz=WALL_Z-hd/2-0.05, wall=WALLS[S.wall], ws=wallTexScale(S.wall);
   setRep(wall,hw/ws,hh/ws);
@@ -840,7 +839,7 @@ function buildShade(){
   env.remove(shade); shade.traverse(o=>o.geometry?.dispose()); shade=new THREE.Group();
   const h=S.hgt,px=S.px,pz=S.pz,tz=S.tilt*D2R,WALL_Z=-S.terrD/2;
   if(S.shape==='round'){
-    const c=new THREE.Mesh(new THREE.ConeGeometry(S.diam/2,0.4,28,1,true),M.fabric);
+    const c=new THREE.Mesh(new THREE.ConeGeometry(S.diam/2,0.4,8,1,true,Math.PI/8),M.fabric);
     c.position.set(px,h,pz);c.rotation.z=tz;c.castShadow=true;
     const p=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,h,12),M.metal);p.position.set(px,h/2,pz);p.castShadow=true;shade.add(c,p);
   } else if(S.shape==='rect'){
@@ -854,7 +853,7 @@ function buildShade(){
     arm.position.copy(G.mastTop).addScaledVector(av,0.5);arm.quaternion.setFromUnitVectors(YAXIS,av.clone().normalize());arm.castShadow=true;
     const cg=new THREE.Group();let cn;
     if(G.isRect)cn=new THREE.Mesh(new THREE.BoxGeometry(G.W,0.05,G.L),M.fabric);
-    else{cn=new THREE.Mesh(new THREE.ConeGeometry(G.R,0.36,28,1,true),M.fabric);cn.position.y=0.18;}
+    else{cn=new THREE.Mesh(new THREE.ConeGeometry(G.R,0.36,8,1,true,Math.PI/8),M.fabric);cn.position.y=0.18;}
     cn.castShadow=true;cg.add(cn);cg.position.copy(G.center);
     cg.quaternion.setFromAxisAngle(G.radial,G.tilt).multiply(new THREE.Quaternion().setFromAxisAngle(YAXIS,G.f));
     shade.add(mast,arm,cg);
@@ -953,7 +952,7 @@ function onChange(key){
   if(key==='time'){updateSun();return;}
   if(key==='doy'){updateSun();buildSweep();return;}
   if(key==='orient'){updateOrient();updateSun();buildSweep();return;}
-  if(key==='terrL'||key==='terrD'){buildWorld();buildShade();buildSweep();updateSub();return;}
+  if(key==='terrL'||key==='terrD'){if(key==='terrD')syncPoleDepth();buildWorld();buildShade();buildSweep();updateSub();return;}
   if(['tableL','tableW','tableX','tableZ'].includes(key)){buildWorld();return;}
   buildShade();buildSweep();
 }
@@ -969,7 +968,14 @@ bind('tableL','tableL',v=>`${fmt(v,1)} m`); bind('tableW','tableW',v=>`${fmt(v,2
 bind('tableX','tableX',v=>`${fmt(v,1)} m`); bind('tableZ','tableZ',v=>`${fmt(v,1)} m`);
 bind('orient','orient',v=>`${v.toFixed(0)}° ${compass16(v)}`);
 bind('diam','diam',v=>`${fmt(v,2)} m`);bind('rw','rw',v=>`${fmt(v,2)} m`);bind('rl','rl',v=>`${fmt(v,2)} m`);
-bind('hgt','hgt',v=>`${fmt(v,2)} m`);bind('px','px',v=>`${fmt(v,1)} m`);bind('pz','pz',v=>`${fmt(v,1)} m`);
+bind('hgt','hgt',v=>`${fmt(v,2)} m`);bind('px','px',v=>`${fmt(v,1)} m`);
+// pz slider = "Abstand zur Wand": distance from house wall (0 = wall → terrD = front edge).
+// Internal S.pz stays the centered coord all geometry reads: pz = poleWall - terrD/2.
+const pzInp=document.getElementById('pz'), pzOut=document.getElementById('pz-v');
+function syncPoleDepth(){ pzInp.max=S.terrD; S.poleWall=clamp(S.poleWall,0,S.terrD);
+  S.pz=S.poleWall-S.terrD/2; pzInp.value=S.poleWall; pzOut.textContent=`${fmt(S.poleWall,1)} m`; }
+pzInp.addEventListener('input',()=>{ S.poleWall=clamp(parseFloat(pzInp.value),0,S.terrD); S.pz=S.poleWall-S.terrD/2;
+  pzOut.textContent=`${fmt(S.poleWall,1)} m`; onChange('pz'); });
 bind('tilt','tilt',v=>`${v.toFixed(0)}°`);bind('swing','swing',v=>`${v.toFixed(0)}°`);
 bind('wb','wb',v=>`${fmt(v,2)} m`);bind('wa','wa',v=>`${fmt(v,2)} m`);bind('sw','sw',v=>`${fmt(v,2)} m`);bind('sl','sl',v=>`${fmt(v,2)} m`);
 document.getElementById('time').addEventListener('input',()=>{document.getElementById('clock').textContent=document.getElementById('time-v').textContent;});
@@ -1087,7 +1093,7 @@ $('nextBtn').addEventListener('click',()=>{ if(curStep<NSTEPS)showStep(curStep+1
 // ---- save / load config (Phase 3): localStorage + shareable URL hash ----
 const SAVE_KEYS=['name','lat','lon','utc','dst','time','doy','orient','terrL','terrD','wall','surface',
   'objTable','tableL','tableW','tableX','tableZ','objChairs','objGrill','objRug','objSide',
-  'shape','diam','rw','rl','hgt','px','pz','tilt','swing','sombShape','sw','sl','wb','wa','sweep','quality'];
+  'shape','diam','rw','rl','hgt','px','pz','poleWall','tilt','swing','sombShape','sw','sl','wb','wa','sweep','quality'];
 function serialize(){const o={};SAVE_KEYS.forEach(k=>o[k]=S[k]);o.walls=S.walls;return o;}
 let saveTimer=null;
 function saveState(){clearTimeout(saveTimer);saveTimer=setTimeout(()=>{try{
@@ -1096,6 +1102,7 @@ function loadState(){let j=null; const h=location.hash;
   if(h.indexOf('#cfg=')===0){try{j=decodeURIComponent(h.slice(5));}catch(e){}} else j=localStorage.getItem('terrace-cfg');
   if(!j)return false;
   try{const o=JSON.parse(j); SAVE_KEYS.forEach(k=>{if(k in o)S[k]=o[k];});
+    if(!('poleWall' in o) && ('pz' in o)) S.poleWall=o.pz+(('terrD' in o)?o.terrD:S.terrD)/2;   // migrate pre-distance configs
     if(o.walls)for(const k of['left','right','front'])if(o.walls[k])Object.assign(S.walls[k],o.walls[k]);
     return true;}catch(e){return false;}}
 function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('show'),1800);}
@@ -1113,6 +1120,7 @@ $('panel').addEventListener('input',saveState); $('panel').addEventListener('cha
 function syncUI(){
   setTiltRange();
   BINDS.forEach(b=>{b.inp.value=S[b.key]; if(b.out)b.out.textContent=b.render(S[b.key]);});
+  syncPoleDepth();
   $('lat').value=S.lat; $('lon').value=S.lon; $('utc').value=S.utc;
   const adv=document.querySelector('details.adv'); if(adv)adv.open=(S.name==='Eigener Standort'); // show manual coords if that's what was loaded
   $('wall').value=S.wall; $('surface').value=S.surface;
