@@ -39,6 +39,10 @@
   .ctrl .row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px}
   .ctrl label{font-size:13px;color:var(--text);font-weight:500}
   .ctrl .val{font-family:'DM Mono',monospace;font-size:12.5px;color:var(--sun);font-weight:500}
+  .ctrl .val.editable{cursor:text;border-bottom:1px dashed var(--line-strong);padding-bottom:1px}
+  .ctrl .val.editable:hover{border-bottom-color:var(--sun)}
+  input.valedit{font-family:'DM Mono',monospace;font-size:12px;color:var(--sun);background:var(--panel-solid);
+    border:1px solid var(--sun);border-radius:6px;padding:1px 6px;width:66px;text-align:right;outline:none}
   input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:3px;background:var(--line-strong);
     border-radius:3px;outline:none;margin:0}
   input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;
@@ -415,7 +419,7 @@
         </div>
         <div class="ctrl" data-when="round rect sombrano">
           <div class="row"><label for="pz">Abstand zur Wand</label><span class="val" id="pz-v">2,0 m</span></div>
-          <input type="range" id="pz" min="0" max="8" step="0.1" value="2">
+          <input type="range" id="pz" min="0" max="5" step="0.1" value="2">
         </div>
         <div class="ctrl" id="ctrl-tilt">
           <div class="row"><label for="tilt" id="tilt-l">Neigung (links/rechts)</label><span class="val" id="tilt-v">0°</span></div>
@@ -839,7 +843,8 @@ function buildShade(){
   env.remove(shade); shade.traverse(o=>o.geometry?.dispose()); shade=new THREE.Group();
   const h=S.hgt,px=S.px,pz=S.pz,tz=S.tilt*D2R,WALL_Z=-S.terrD/2;
   if(S.shape==='round'){
-    const c=new THREE.Mesh(new THREE.ConeGeometry(S.diam/2,0.4,8,1,true,Math.PI/8),M.fabric);
+    const cg=new THREE.ConeGeometry(S.diam/2,0.4,8,1,true,Math.PI/8);cg.translate(0,-0.2,0); // apex → origin: canopy sits on the mast top and tilts around it
+    const c=new THREE.Mesh(cg,M.fabric);
     c.position.set(px,h,pz);c.rotation.z=tz;c.castShadow=true;
     const p=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,h,12),M.metal);p.position.set(px,h/2,pz);p.castShadow=true;shade.add(c,p);
   } else if(S.shape==='rect'){
@@ -960,7 +965,24 @@ const BINDS=[];
 function bind(id,key,render){const inp=document.getElementById(id),out=document.getElementById(id+'-v');
   const apply=()=>{S[key]=parseFloat(inp.value);if(out)out.textContent=render(S[key]);};
   inp.addEventListener('input',()=>{apply();onChange(key);});apply();
+  if(out&&EDIT_KEYS.has(key)) makeEditable(out,{get:()=>S[key],
+    set:v=>{S[key]=v;inp.value=v;out.textContent=render(v);onChange(key);saveState();},
+    min:parseFloat(inp.min),max:parseFloat(inp.max),render});
   BINDS.push({inp,key,out,render});}
+// click a metre readout to type an exact value (finer than the slider step; for the mast it may exceed the slider range)
+const EDIT_KEYS=new Set(['terrL','terrD','diam','rw','rl','hgt','px','tableL','tableW','tableX','tableZ','wb','wa','sw','sl']);
+function makeEditable(out,{get,set,min,max,render}){
+  out.classList.add('editable'); out.title='Klicken für genaue Eingabe';
+  out.addEventListener('click',()=>{ if(out.querySelector('input'))return;
+    const inp=document.createElement('input'); inp.type='text'; inp.inputMode='decimal'; inp.className='valedit';
+    inp.value=render(get()).replace(/\s*m$/,'').trim();
+    out.textContent=''; out.appendChild(inp); inp.focus(); inp.select();
+    const done=save=>{ let v=save?parseFloat(String(inp.value).replace(',','.')):get();
+      if(!isFinite(v))v=get(); set(clamp(v,min,max)); };
+    inp.addEventListener('keydown',e=>{ if(e.key==='Enter'){e.preventDefault();inp.blur();}
+      else if(e.key==='Escape'){e.preventDefault();inp.dataset.cancel='1';inp.blur();} });
+    inp.addEventListener('blur',()=>done(inp.dataset.cancel!=='1')); });
+}
 bind('time','time',v=>{const h=Math.floor(v/60),m=Math.round(v%60);return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;});
 bind('date','doy',v=>{const{month,day}=doyToDate(v);document.getElementById('datelbl').textContent=`${day}. ${MONTHS[month]} ${YEAR}`;return `${day}. ${MONTHS[month]}`;});
 bind('tl','terrL',v=>`${fmt(v,1)} m`); bind('td','terrD',v=>`${fmt(v,1)} m`);
@@ -971,11 +993,13 @@ bind('diam','diam',v=>`${fmt(v,2)} m`);bind('rw','rw',v=>`${fmt(v,2)} m`);bind('
 bind('hgt','hgt',v=>`${fmt(v,2)} m`);bind('px','px',v=>`${fmt(v,1)} m`);
 // pz slider = "Abstand zur Wand": distance from house wall (0 = wall → terrD = front edge).
 // Internal S.pz stays the centered coord all geometry reads: pz = poleWall - terrD/2.
-const pzInp=document.getElementById('pz'), pzOut=document.getElementById('pz-v');
-function syncPoleDepth(){ pzInp.max=S.terrD; S.poleWall=clamp(S.poleWall,0,S.terrD);
-  S.pz=S.poleWall-S.terrD/2; pzInp.value=S.poleWall; pzOut.textContent=`${fmt(S.poleWall,1)} m`; }
-pzInp.addEventListener('input',()=>{ S.poleWall=clamp(parseFloat(pzInp.value),0,S.terrD); S.pz=S.poleWall-S.terrD/2;
-  pzOut.textContent=`${fmt(S.poleWall,1)} m`; onChange('pz'); });
+const pzInp=document.getElementById('pz'), pzOut=document.getElementById('pz-v'), POLEWALL_MAX=12;
+function setPoleWall(v){ S.poleWall=clamp(v,0,POLEWALL_MAX); S.pz=S.poleWall-S.terrD/2;
+  pzInp.value=S.poleWall; pzOut.textContent=`${fmt(S.poleWall,1)} m`; }
+function syncPoleDepth(){ setPoleWall(S.poleWall); }   // recompute centered pz when terrace depth changes
+pzInp.addEventListener('input',()=>{ setPoleWall(parseFloat(pzInp.value)); onChange('pz'); });
+makeEditable(pzOut,{get:()=>S.poleWall, set:v=>{setPoleWall(v);onChange('pz');saveState();},
+  min:0,max:POLEWALL_MAX,render:v=>`${fmt(v,1)} m`});
 bind('tilt','tilt',v=>`${v.toFixed(0)}°`);bind('swing','swing',v=>`${v.toFixed(0)}°`);
 bind('wb','wb',v=>`${fmt(v,2)} m`);bind('wa','wa',v=>`${fmt(v,2)} m`);bind('sw','sw',v=>`${fmt(v,2)} m`);bind('sl','sl',v=>`${fmt(v,2)} m`);
 document.getElementById('time').addEventListener('input',()=>{document.getElementById('clock').textContent=document.getElementById('time-v').textContent;});
