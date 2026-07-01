@@ -853,14 +853,17 @@ function buildShade(){
   } else if(S.shape==='sombrano'){
     const G=sombranoGeom(S);
     const mast=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.07,G.mastTop.y,18),M.metal);mast.position.set(S.px,G.mastTop.y/2,S.pz);mast.scale.z=1.4;mast.castShadow=true;
-    const av=new THREE.Vector3().subVectors(G.center,G.mastTop);
+    const cg=new THREE.Group();let cn,hubY;
+    if(G.isRect){cn=new THREE.Mesh(new THREE.BoxGeometry(G.W,0.05,G.L),M.fabric);hubY=0;}
+    else{cn=new THREE.Mesh(new THREE.ConeGeometry(G.R,0.36,8,1,true,Math.PI/8),M.fabric);cn.position.y=0.18;hubY=0.36;}
+    cn.castShadow=true;cg.add(cn);cg.position.copy(G.center);
+    const qCanopy=new THREE.Quaternion().setFromAxisAngle(G.radial,G.tilt).multiply(new THREE.Quaternion().setFromAxisAngle(YAXIS,G.f));
+    cg.quaternion.copy(qCanopy);
+    // arm reaches the canopy hub (top centre, where the fabric converges) → no gap between mast and Schirm
+    const hub=G.center.clone().add(new THREE.Vector3(0,hubY,0).applyQuaternion(qCanopy));
+    const av=new THREE.Vector3().subVectors(hub,G.mastTop);
     const arm=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,av.length(),12),M.metal);
     arm.position.copy(G.mastTop).addScaledVector(av,0.5);arm.quaternion.setFromUnitVectors(YAXIS,av.clone().normalize());arm.castShadow=true;
-    const cg=new THREE.Group();let cn;
-    if(G.isRect)cn=new THREE.Mesh(new THREE.BoxGeometry(G.W,0.05,G.L),M.fabric);
-    else{cn=new THREE.Mesh(new THREE.ConeGeometry(G.R,0.36,8,1,true,Math.PI/8),M.fabric);cn.position.y=0.18;}
-    cn.castShadow=true;cg.add(cn);cg.position.copy(G.center);
-    cg.quaternion.setFromAxisAngle(G.radial,G.tilt).multiply(new THREE.Quaternion().setFromAxisAngle(YAXIS,G.f));
     shade.add(mast,arm,cg);
   } else if(S.shape==='warema'){
     const P=wareamaPlane(S); shade.add(box(P.w+0.1,0.2,0.26,M.metal,P.px,P.y0,P.z0-0.1));
